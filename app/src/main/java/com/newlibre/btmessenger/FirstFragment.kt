@@ -10,6 +10,8 @@ import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.AdapterView
+import android.widget.AdapterView.OnItemSelectedListener
 import android.widget.ArrayAdapter
 import android.widget.Spinner
 import androidx.fragment.app.Fragment
@@ -34,6 +36,7 @@ class FirstFragment : Fragment() {
     var pairedDevices: Set<BluetoothDevice>? = null
     var btAdapter: BluetoothAdapter? = null
     var btHandler: BtHandler? = null
+    var btCurrentDeviceName: String? = null
 
     override fun onCreateView(
             inflater: LayoutInflater, container: ViewGroup?,
@@ -60,6 +63,21 @@ class FirstFragment : Fragment() {
 
         binding.buttonFirst.setOnClickListener {
             findNavController().navigate(R.id.action_FirstFragment_to_SecondFragment)
+        }
+
+        btDeviceSpinner!!.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
+            override fun onNothingSelected(parent: AdapterView<*>?) {
+
+            }
+
+            override fun onItemSelected(parent: AdapterView<*>?, view: View?, position: Int, id: Long) {
+                btCurrentDeviceName = btDeviceSpinner?.getSelectedItem().toString();
+                //saveDeviceNamePref();
+                Log.d("FirstFrag", "DeviceInfo : " + btCurrentDeviceName);
+                //logViewAdapter.add("DeviceInfo : " + btCurrentDeviceName);
+                //logViewAdapter.notifyDataSetChanged();
+            }
+
         }
     }
 
