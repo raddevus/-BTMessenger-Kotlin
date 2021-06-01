@@ -10,13 +10,12 @@ import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import android.widget.AdapterView
-import android.widget.AdapterView.OnItemSelectedListener
-import android.widget.ArrayAdapter
-import android.widget.Spinner
+import android.widget.*
 import androidx.fragment.app.Fragment
 import androidx.navigation.fragment.findNavController
 import com.newlibre.btmessenger.databinding.FragmentFirstBinding
+import java.util.*
+import kotlin.collections.ArrayList
 
 
 /**
@@ -30,6 +29,7 @@ class FirstFragment : Fragment() {
     // onDestroyView.
     private val binding get() = _binding!!
 
+    val REQUEST_ENABLE_BT = 1
     private var btDeviceSpinner: Spinner? = null
     private var adapter: ArrayAdapter<String>? = null
     var listViewItems = ArrayList<String>()
@@ -37,6 +37,12 @@ class FirstFragment : Fragment() {
     var btAdapter: BluetoothAdapter? = null
     var btHandler: BtHandler? = null
     var btCurrentDeviceName: String? = null
+    private var textToSend: EditText? = null
+    private var sendButton: Button? = null
+    var btListener : BtHandler? = null
+    var runOnce : Boolean = false;
+    lateinit var bluetoothService : BluetoothService
+    lateinit var currentBtDevice : BluetoothDevice
 
     override fun onCreateView(
             inflater: LayoutInflater, container: ViewGroup?,
@@ -60,6 +66,9 @@ class FirstFragment : Fragment() {
         adapter?.notifyDataSetChanged()
         btAdapter = BluetoothAdapter.getDefaultAdapter()
         pairedDevices = GetPairedDevices(btAdapter)
+        textToSend = view.findViewById(R.id.textToSend) as EditText
+        sendButton = view.findViewById(R.id.sendButton) as Button
+
 
         binding.buttonFirst.setOnClickListener {
             findNavController().navigate(R.id.action_FirstFragment_to_SecondFragment)
@@ -76,8 +85,111 @@ class FirstFragment : Fragment() {
                 Log.d("FirstFrag", "DeviceInfo : " + btCurrentDeviceName);
                 //logViewAdapter.add("DeviceInfo : " + btCurrentDeviceName);
                 //logViewAdapter.notifyDataSetChanged();
+
+            }
+       }
+
+        sendButton!!.setOnClickListener(View.OnClickListener {
+            Log.i("FirstFrag", btCurrentDeviceName.toString());
+            if (btCurrentDeviceName === "") {
+                return@OnClickListener
             }
 
+            sendTextViaBT()
+            writeData()
+
+        })
+
+        currentBtDevice = pairedDevices?.find { w -> w.name == "twostar" }!!
+        Log.i("FirstFrag",currentBtDevice!!.name)
+        try {
+            bluetoothService = BluetoothService(currentBtDevice)
+            bluetoothService.ct.run()
+        }
+        catch (ex: Exception ){
+            Log.i("FirstFrag", ex.message.toString())
+        }
+
+
+        //Log.i("FirstFrag", uuid.toString())
+
+
+
+
+    }
+
+    private fun writeData() {
+        val outText = textToSend!!.text.toString()
+
+//        if (pairedDevices!!.size > 0) {
+//            for (btItem in pairedDevices!!) {
+//                if (btItem != null) {
+//                    val name = btItem.name
+//                    if (name == btCurrentDeviceName) {
+//                        val uuid: UUID = btItem.uuids[0].uuid
+//                        Log.i("FirstFrag", uuid.toString())
+//                        Log.i("FirstFrag", btCurrentDeviceName!!)
+//                        if (btListener == null) {
+//                            btListener = BtHandler(btItem, uuid, null)
+//                        }
+//                        btListener?.run()
+//                    }
+//                }
+//            }
+//        }
+
+        Log.i("FirstFrag", "sending text : $outText")
+
+        if (outText != "") {
+            btHandler!!.writeMessage(outText)
+            if (!runOnce)
+            {
+
+                runOnce = true
+            }
+            try {
+                Thread.sleep(200)
+                btHandler!!.cancel()
+            } catch (e: InterruptedException) {
+                e.printStackTrace()
+            } finally {
+                btHandler = null
+            }
+        }
+
+    }
+
+    private fun sendTextViaBT() {
+        if (btAdapter == null) {
+            btAdapter = BluetoothAdapter.getDefaultAdapter()
+        }
+        if (btAdapter != null) {
+            if (!btAdapter!!.isEnabled) {
+                val enableBtIntent = Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE)
+                startActivityForResult(enableBtIntent, REQUEST_ENABLE_BT)
+            }
+        } else {
+            Log.d("FirstFrag", "no bt adapter available")
+            return  // cannot get btadapter
+        }
+        if (pairedDevices == null) {
+            pairedDevices = btAdapter!!.bondedDevices
+        }
+        if (pairedDevices!!.size > 0) {
+            for (btItem in pairedDevices!!) {
+                if (btItem != null) {
+                    val name = btItem.name
+                    if (name == btCurrentDeviceName) {
+                        val uuid: UUID = btItem.uuids[0].uuid
+                        Log.i("FirstFrag", uuid.toString())
+                        if (btHandler == null) {
+                            btHandler = BtHandler(btItem, uuid, null)
+                        }
+                        btHandler!!.run(btAdapter!!)
+                        return
+                    }
+                }
+            }
         }
     }
 

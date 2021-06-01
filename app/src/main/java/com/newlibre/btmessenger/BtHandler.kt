@@ -20,6 +20,9 @@ class BtHandler(device: BluetoothDevice, uuid: UUID?, logViewAdapter: ArrayAdapt
     //private final InputStream mmInStream;
     private var mmOutStream: OutputStream? = null
     private var mmInStream: InputStream? = null
+    private val mmBuffer: ByteArray = ByteArray(1024) // mmBuffer store for the stream
+
+
     fun writeYes() {
         try {
             val outByte = byteArrayOf(121)
@@ -77,13 +80,15 @@ class BtHandler(device: BluetoothDevice, uuid: UUID?, logViewAdapter: ArrayAdapt
         try {
             // Connect the device through the socket. This will block
             // until it succeeds or throws an exception
-            Log.d("MainActivity", "Connecting...")
+            Log.d("FirstFrag", "Connecting...")
             if (logViewAdapter != null) {
                 logViewAdapter?.add("Connecting...")
                 logViewAdapter?.notifyDataSetChanged()
             }
-            mmSocket!!.connect()
-            Log.d("MainActivity", "Connected")
+            if (!mmSocket!!.isConnected) {
+                mmSocket!!.connect()
+            }
+            Log.d("FirstFrag", "Connected")
             if (logViewAdapter != null) {
                 logViewAdapter?.add("Connected")
                 logViewAdapter?.notifyDataSetChanged()
@@ -114,28 +119,29 @@ class BtHandler(device: BluetoothDevice, uuid: UUID?, logViewAdapter: ArrayAdapt
     }
 
     override fun run() {
-        val buffer = ByteArray(1024) // buffer store for the stream
-        var bytes: Int // bytes returned from read()
-        if (logViewAdapter != null) {
-            logViewAdapter?.add("Reading from BT!...")
-            logViewAdapter?.notifyDataSetChanged()
+        var numBytes: Int // bytes returned from read()
+        Log.i("FirstFrag","in run()...")
+        if (mmSocket?.isConnected!!){
+            mmSocket?.connect()
+            Log.i("FirstFrag","Connected")
         }
-        // Keep listening to the InputStream until an exception occurs
+        // Keep listening to the InputStream until an exception occurs.
         while (true) {
-            try {
-                // Read from the InputStream
-                bytes = mmInStream!!.read(buffer)
-                // Send the obtained bytes to the UI activity
-                if (logViewAdapter != null) {
-                    logViewAdapter?.add(bytes.toString())
-                    logViewAdapter?.notifyDataSetChanged()
-                }
+            // Read from the InputStream.
+            numBytes = try {
+                mmInStream!!.read(mmBuffer)
+               // Log.i("FirstFrag", "trying...")
             } catch (e: IOException) {
-                if (logViewAdapter != null) {
-                    logViewAdapter?.add("IOException on read: " + e.message)
-                    logViewAdapter?.notifyDataSetChanged()
-                }
+                Log.d("FirstFrag", "Input stream was disconnected", e)
+                break
             }
+
+            // Send the obtained bytes to the UI activity.
+//                val readMsg = handler.obtainMessage(
+//                    MESSAGE_READ, numBytes, -1,
+//                    mmBuffer)
+//                readMsg.sendToTarget()
+            Log.i("FirstFrag", mmBuffer.toString())
         }
     }
 
